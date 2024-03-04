@@ -1,0 +1,22 @@
+{
+  "name": "music",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "dev": "concurrently \"cd my-svelte-app && npm run dev\" \"node server.js\"",
+    "start": "node server.js",
+    "build": "cd my-svelte-app && npm run build"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "fs": "^0.0.1-security"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
