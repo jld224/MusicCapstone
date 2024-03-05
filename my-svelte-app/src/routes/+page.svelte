@@ -1,6 +1,8 @@
 <script>
   import { onMount } from "svelte";
   import { writable } from "svelte/store";
+  import ChordChart from '../ChordChart.svelte'; // Import the ChordChart component
+
 
   const songs = writable([]);
   let selectedSong = "";
@@ -93,19 +95,52 @@
 {:else if $error}
   <p class="error">{$error}</p>
 {:else if $analysisResult}
-  <div>
-    <h2>Analysis Result</h2>
-    <p>Title: {$analysisResult.title}</p>
-    <p>Composer: {$analysisResult.composer}</p>
-    <p>Style: {$analysisResult.style}</p>
-    <p>Key: {$analysisResult.key}</p>
-    <p>Time Signature: {$analysisResult.time_signature}</p>
-    <pre>Chord Progression: {$analysisResult.measures}</pre>
+  <div class="analysis-result">
+    <h2>Analysis Result for "{$analysisResult.title}"</h2>
+    <p><strong>Composer:</strong> {$analysisResult.composer}</p>
+    <p><strong>Style:</strong> {$analysisResult.style}</p>
+    <p><strong>Key:</strong> {$analysisResult.key}</p>
+    <p><strong>Time Signature:</strong> {$analysisResult.time_signature}</p>
+    <h3>Chord Progression</h3>
+    <pre>{$analysisResult.measures.join('\n')}</pre>
+    <p><strong>Chord String:</strong> {$analysisResult.chord_string}</p>
+    <div>
+      <ChordChart chordString={$analysisResult.chord_string} />
+    </div>
   </div>
 {/if}
 
 <style>
   .error {
     color: red;
+  }
+  
+  .analysis-result {
+    background-color: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+  }
+  
+  .analysis-result h2 {
+    color: #333;
+  }
+  
+  .analysis-result p, .analysis-result pre {
+    color: #666;
+  }
+  
+  .analysis-result pre {
+    background-color: #eee;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    overflow-x: auto;
+  }
+  
+  .analysis-result h3 {
+    margin-top: 20px;
+    color: #333;
   }
 </style>

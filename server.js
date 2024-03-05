@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs').promises; // Use fs promises for async operations
 const path = require('path');
 const cors = require('cors');
-const { exec, spawn } = require('child_process'); // Correctly import exec
+const { spawn } = require('child_process'); // Correctly import spawn
 
 const app = express();
 const PORT = 3001;
@@ -33,7 +33,8 @@ app.post('/analyze', (req, res) => {
         return res.status(400).json({ error: 'No song link provided for analysis.' });
     }
     
-    // Ensure the path to the Python script is correct. It might need to be adjusted based on your actual file structure.
+    // Assume the path to the Python script is correct and it's named 'music_analysis.py' located in 'python' directory.
+    // Adjust the path as necessary to match your actual file structure.
     const pythonProcess = spawn('python3', ['python/music_analysis.py', link]);
     
     let result = '';
@@ -41,17 +42,20 @@ app.post('/analyze', (req, res) => {
         result += data.toString();
     });
     
-    pythonProcess.stderr.on('data', (data) => {
-        console.error(`stderr: ${data}`);
-    });
-    
     pythonProcess.on('close', (code) => {
+        result = result.trim(); // Trim the result to remove leading/trailing whitespace
+
+        const firstCurlyIndex = result.indexOf('{');
+        const jsonString = result.substring(firstCurlyIndex);
+    
         if (code !== 0) {
             console.log(`Python script exited with code ${code}`);
-            return res.status(500).json({ error: 'Failed to analyze the song.' });
+            return res.status(500).json({ error: 'Failed to analyze the song. Please check the server logs for more details.' });
         }
+    
         try {
-            const parsedResult = JSON.parse(result);
+            const parsedResult = JSON.parse(jsonString);
+            console.log(parsedResult)
             res.json(parsedResult);
         } catch (error) {
             console.error('Failed to parse Python script output:', error);

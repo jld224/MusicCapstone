@@ -4,39 +4,31 @@ from urllib.parse import unquote
 from pyRealParser import Tune
 
 def analyze_ireal_link(ireal_link):
-    # Decode the URL-encoded iRealPro link
     decoded_link = unquote(ireal_link)
 
     try:
-        # Attempt to parse the iRealPro content
         tunes = Tune.parse_ireal_url(decoded_link)
         if not tunes:
             raise ValueError("No tunes found in the provided iRealPro link.")
 
-        # Assuming there's only one tune per link for this use case
         tune = tunes[0]
 
-        # Format the analysis result
         analysis_result = {
             "title": tune.title,
             "composer": tune.composer,
             "style": tune.style,
             "key": tune.key,
             "time_signature": f"{tune.time_signature[0]}/{tune.time_signature[1]}",
-            "measures": tune.measures_as_strings
+            "measures": tune.measures_as_strings,
+            "chord_string": tune.chord_string,
         }
 
-        # Write the analysis result to a file
-        output_file = "analysis_result.json"  # Specify the output file name
-        with open(output_file, "w") as file:
-            json.dump({"results": analysis_result}, file, indent=4)
+        # Only print the JSON result to stdout
+        print(json.dumps(analysis_result))
 
     except Exception as e:
-        # Log and return errors during analysis in JSON format
         error_message = f"An error occurred during the analysis: {str(e)}"
-        output_file = "analysis_result.json"  # Specify the output file name
-        with open(output_file, "w") as file:
-            json.dump({"error": error_message}, file, indent=4)
+        print(json.dumps({"error": error_message}))
 
 def main(ireal_link):
     analyze_ireal_link(ireal_link)
