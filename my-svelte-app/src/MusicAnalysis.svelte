@@ -1,6 +1,8 @@
 <script>
     import { onMount } from "svelte";
     import { writable } from "svelte/store";
+    import { analysisResultStore } from './stores.js';
+
 
     const songs = writable([]);
     let selectedSongUrl = "";
@@ -39,6 +41,8 @@
 
             const result = await response.json();
             analysisResult.set(result);
+            analysisResultStore.set(result);
+            console.error('Analysis result in musicanalysis.svelte:', result);
         } catch (err) {
             console.error('Error analyzing song:', err);
             error.set(err.message || 'An unexpected error occurred during analysis.');

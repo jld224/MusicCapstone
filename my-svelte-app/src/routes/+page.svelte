@@ -2,6 +2,8 @@
   import { onMount } from "svelte";
   import { writable } from "svelte/store";
   import ChordChart from '../ChordChart.svelte'; // Import the ChordChart component
+  import CodeAnalysis from "../AIAnalysis.svelte";
+  import { analysisResultStore } from "../stores.js";
 
 
   const songs = writable([]);
@@ -45,6 +47,7 @@
   }
 
   async function analyzeMusic() {
+    console.log(JSON.stringify({ music: $analysisResult }));
     if (!selectedSong) {
       error.set("Please select a song for analysis.");
       return;
@@ -65,6 +68,8 @@
       }
       const data = await response.json();
       analysisResult.set(data);
+      analysisResultStore.set(data);
+      console.error('Analysis result in +page:', data);
       fetchStatus.set(""); // Clear status on success
     } catch (err) {
       console.error("Error:", err);
@@ -109,6 +114,10 @@
     </div>
   </div>
 {/if}
+
+<div>
+  <CodeAnalysis />
+</div>
 
 <style>
   .error {

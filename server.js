@@ -3,12 +3,65 @@ const fs = require('fs').promises; // Use fs promises for async operations
 const path = require('path');
 const cors = require('cors');
 const { spawn } = require('child_process'); // Correctly import spawn
+const axios = require('axios');
+require('dotenv').config();
+const OpenAI = require('openai');
+
+const openai = new OpenAI({
+    apiKey: process.env['OPENAI_API_KEY'], // Ensure this environment variable is set
+  });
+
+// const openaiApiKey = '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';
+// const configuration = new Configuration({
+//   apiKey: openaiApiKey,
+// });
+// const openaiClient = new OpenAIApi(configuration);
 
 const app = express();
 const PORT = 3001;
 
 app.use(cors());
 app.use(express.json());
+
+app.post('/analyze_music', async (req, res) => {
+    console.log(req.body); // Log the request body for debugging
+    
+    // Directly use req.body assuming it's the raw data intended for analysis
+    if (!req.body || Object.keys(req.body).length === 0) {
+        return res.status(400).json({ error: 'No music data provided.' });
+    }
+
+    try {
+        // Assuming req.body is the structured data needed for analysis
+        // Convert it to a string representation if it involves complex objects
+        const musicDataString = JSON.stringify(req.body);
+
+        const chatCompletion = await openai.ChatCompletion.create({
+            model: 'gpt-3.5-turbo',
+            messages: [
+                {
+                    role: 'system',
+                    content: "You're a helpful assistant trained in music analysis. Provide insights based on the given data."
+                },
+                {
+                    role: 'user',
+                    content: `Analyze this data: ${musicDataString}`
+                }
+            ],
+        });
+
+        // Assuming the API returns a response in the expected format
+        const analysisResult = chatCompletion.data.choices[0].message.content;
+        
+        // Send analysis result back to the frontend
+        res.json({ analysisResult });
+    } catch (error) {
+        console.error('Error analyzing music:', error);
+        // Handle specific OpenAI errors more gracefully if needed
+        res.status(500).json({ error: 'Failed to analyze music using OpenAI API.' });
+    }
+});
+
 
 // Serve song list from JSON file
 app.get('/songs', async (req, res) => {
