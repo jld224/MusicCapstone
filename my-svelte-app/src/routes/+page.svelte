@@ -1,17 +1,19 @@
 <script>
   import { onMount } from "svelte";
   import { writable } from "svelte/store";
-  import ChordChart from '../ChordChart.svelte'; // Import the ChordChart component
+  import ChordChart from "../ChordChart.svelte";
   import CodeAnalysis from "../AIAnalysis.svelte";
-  import { analysisResultStore } from "../stores.js";
-
+  import StreamAnalysis from "../StreamingAnalysis.svelte";
+  import { analysisResultStore } from '../stores.js';
 
   const songs = writable([]);
   let selectedSong = "";
   const analysisResult = writable(null);
   const error = writable("");
   const loading = writable(false);
-  const fetchStatus = writable(""); // Add this line
+  const fetchStatus = writable("");
+  let searchQuery = "";
+
 
   onMount(async () => {
     loading.set(true);
@@ -19,16 +21,12 @@
     try {
       const response = await fetch("http://localhost:3001/songs");
       if (response.ok) {
-        let data = await response.json();
-        // Ensure the response is an array; otherwise, fallback to an empty array
-        data = Array.isArray(data) ? data : [];
+        const data = await response.json();
         songs.set(data);
         fetchStatus.set("");
-        console.log(songs);
-        console.log(data);
       } else {
         throw new Error(
-          `Failed to fetch songs: server responded with status ${response.status}`,
+          `Failed to fetch songs: server responded with status ${response.status}`
         );
       }
     } catch (err) {
@@ -40,56 +38,63 @@
     }
   });
 
-  // Function to handle the change event on the select element
   function handleSongSelection(event) {
     selectedSong = event.target.value;
-    console.log(selectedSong); // For debugging
   }
 
   async function analyzeMusic() {
-    console.log(JSON.stringify({ music: $analysisResult }));
     if (!selectedSong) {
       error.set("Please select a song for analysis.");
       return;
     }
     loading.set(true);
     error.set("");
-    fetchStatus.set("Analyzing song..."); // Inform user analysis has started
+    fetchStatus.set("Analyzing song...");
     try {
       const response = await fetch("http://localhost:3001/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ link: selectedSong }), // Ensure this matches the server's expected format
+        body: JSON.stringify({ link: selectedSong }),
       });
       if (!response.ok) {
         throw new Error(
-          `Failed to analyze the song: server responded with status ${response.status}`,
+          `Failed to analyze the song: server responded with status ${response.status}`
         );
       }
       const data = await response.json();
       analysisResult.set(data);
       analysisResultStore.set(data);
-      console.error('Analysis result in +page:', data);
-      fetchStatus.set(""); // Clear status on success
+      console.log("Storing song data on main page: ", analysisResult)
     } catch (err) {
       console.error("Error:", err);
       error.set(err.message);
-      fetchStatus.set(""); // Ensure status is cleared on error
     } finally {
       loading.set(false);
     }
   }
+
+  $: filteredSongs = $songs.filter((song) =>
+    song.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
 </script>
 
-<select on:change={handleSongSelection}>
-  <option value="">-- Select a song --</option>
-  {#each $songs as { title, link }}
-    <option value={link}>{title}</option>
-  {/each}
-</select>
-<button on:click={analyzeMusic} disabled={$loading || !selectedSong}
-  >Analyze</button
->
+<div>
+  <input
+    type="text"
+    bind:value={searchQuery}
+    placeholder="Search by title..."
+  />
+  <select on:change={handleSongSelection}>
+    <option value="">-- Select a song --</option>
+    {#each filteredSongs as song}
+      <option value={song.link}>{song.title}</option>
+    {/each}
+  </select>
+  <button on:click={analyzeMusic} disabled={$loading || !selectedSong}
+    >Analyze</button
+  >
+</div>
 
 {#if $fetchStatus}
   <p>{$fetchStatus}</p>
@@ -111,9 +116,12 @@
     <p><strong>Chord String:</strong> {$analysisResult.chord_string}</p>
     <div>
       <ChordChart chordString={$analysisResult.chord_string} />
-    </div>
-  </div>
+    </div>  </div>
 {/if}
+
+<div>
+  <StreamAnalysis />
+</div>
 
 <div>
   <CodeAnalysis />
@@ -123,7 +131,6 @@
   .error {
     color: red;
   }
-  
   .analysis-result {
     background-color: #f5f5f5;
     border: 1px solid #ddd;
@@ -131,25 +138,16 @@
     padding: 20px;
     margin-top: 20px;
   }
-  
-  .analysis-result h2 {
-    color: #333;
-  }
-  
-  .analysis-result p, .analysis-result pre {
+  .analysis-result h2,
+  .analysis-result p,
+  .analysis-result pre {
     color: #666;
   }
-  
   .analysis-result pre {
     background-color: #eee;
     border: 1px solid #ddd;
     border-radius: 4px;
     padding: 10px;
     overflow-x: auto;
-  }
-  
-  .analysis-result h3 {
-    margin-top: 20px;
-    color: #333;
   }
 </style>
