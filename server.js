@@ -69,6 +69,7 @@ app.post('/standard_AI_Analysis', async (req, res) => {
 });
 
 app.post('/stream_AI_Analysis', async (req, res) => {
+    console.log(req.body);
     if (!req.body || !req.body.music || !req.body.choice) {
         return res.status(400).json({ error: 'No music data or choice provided.' });
     }

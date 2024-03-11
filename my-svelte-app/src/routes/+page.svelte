@@ -3,6 +3,7 @@
   import { writable } from "svelte/store";
   import ChordChart from "../ChordChart.svelte";
   import CodeAnalysis from "../AIAnalysis.svelte";
+  import ChordString from "../ChordString.svelte";
   import StreamAnalysis from "../StreamingAnalysis.svelte";
   import { analysisResultStore } from '../stores.js';
 
@@ -79,29 +80,31 @@
 
 </script>
 
-<div>
+<div class="search-section">
   <input
     type="text"
     bind:value={searchQuery}
     placeholder="Search by title..."
+    class="search-input"
+    aria-label="Search songs by title"
   />
-  <select on:change={handleSongSelection}>
+  <select on:change={handleSongSelection} class="song-select">
     <option value="">-- Select a song --</option>
     {#each filteredSongs as song}
       <option value={song.link}>{song.title}</option>
     {/each}
   </select>
-  <button on:click={analyzeMusic} disabled={$loading || !selectedSong}
-    >Analyze</button
-  >
+  <button on:click={analyzeMusic} disabled={$loading || !selectedSong} class="analyze-button">
+    Analyze
+  </button>
 </div>
 
 {#if $fetchStatus}
-  <p>{$fetchStatus}</p>
+  <p class="status-message">{$fetchStatus}</p>
 {/if}
 
 {#if $loading}
-  <p>Loading...</p>
+  <div class="loading-state">Loading...</div>
 {:else if $error}
   <p class="error">{$error}</p>
 {:else if $analysisResult}
@@ -115,39 +118,109 @@
     <pre>{$analysisResult.measures.join('\n')}</pre>
     <p><strong>Chord String:</strong> {$analysisResult.chord_string}</p>
     <div>
-      <ChordChart chordString={$analysisResult.chord_string} />
-    </div>  </div>
+      <ChordString />
+    </div>  
+  </div>
 {/if}
 
-<div>
+<div class="stream-analysis-container">
   <StreamAnalysis />
 </div>
 
-<div>
-  <CodeAnalysis />
-</div>
-
 <style>
-  .error {
-    color: red;
+  :global(body) {
+    font-family: 'Open Sans', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #fafafa;
   }
-  .analysis-result {
-    background-color: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    padding: 20px;
+
+  .search-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
     margin-top: 20px;
   }
+
+  .search-input,
+  .song-select {
+    border: 1px solid #ccc;
+    border-radius: 20px;
+    padding: 10px 15px;
+    font-size: 16px;
+    transition: border-color 0.3s;
+  }
+
+  .search-input:focus,
+  .song-select:focus {
+    outline: none;
+    border-color: #6200ea;
+  }
+
+  .analyze-button {
+    background-color: #6200ea;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+  .analyze-button:hover {
+    background-color: #3700b3;
+  }
+
+  .analyze-button:disabled {
+    background-color: #a0a0a0;
+  }
+
+  .status-message, .loading-state {
+    text-align: center;
+    margin-top: 20px;
+  }
+
+  .error {
+    color: #b00020;
+    background-color: #ffebee;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+    margin-top: 20px;
+  }
+
+  .analysis-result {
+    background-color: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    margin: 30px auto;
+    max-width: 800px;
+  }
+
   .analysis-result h2,
   .analysis-result p,
   .analysis-result pre {
-    color: #666;
+    color: #333;
   }
+
+  .analysis-result h3 {
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+  }
+
   .analysis-result pre {
-    background-color: #eee;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    padding: 15px;
     overflow-x: auto;
+  }
+
+  .stream-analysis-container{
+    margin-top: 30px;
   }
 </style>

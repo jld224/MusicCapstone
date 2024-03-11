@@ -1,19 +1,19 @@
 <script>
   import { writable } from "svelte/store";
   import { analysisResultStore } from "./stores.js";
-
+  
   const error = writable("");
   const loading = writable(false);
   const analysisResult = writable("");
+  let streamActive = false;
 
-  // Modify streamAnalysis to accept a choice parameter
   async function streamAnalysis(choice) {
     loading.set(true);
-    analysisResult.set(""); // Clear previous analysis results
+    analysisResult.set("");
     error.set("");
+    streamActive = true;
 
     try {
-      // Include the choice in the request body
       const response = await fetch("http://localhost:3001/stream_AI_Analysis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -26,26 +26,24 @@
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      // Recursive function to process streamed text
+
       async function processStream() {
-        const { done, value } = await reader.read();
-        if (done) {
-          console.log("Stream completed");
-          loading.set(false);
-          return;
-        }
-
-        // Decode the stream chunk to a string
-        const chunk = decoder.decode(value, { stream: true });
-        chunk.split("\n").forEach((line) => {
-          if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.substring(5)); // Extract JSON data
-            analysisResult.update((n) => n + data.content);
+        while (streamActive) {
+          const { done, value } = await reader.read();
+          if (done || !streamActive) {
+            console.log("Stream completed or stopped by user");
+            break;
           }
-        });
-
-        // Read the next chunk
-        processStream();
+          const chunk = decoder.decode(value, { stream: true });
+          chunk.split("\n").forEach((line) => {
+            if (line.startsWith("data: ")) {
+              const data = JSON.parse(line.substring(5));
+              analysisResult.update((n) => n + data.content);
+            }
+          });
+        }
+        loading.set(false);
+        streamActive = false;
       }
 
       processStream();
@@ -53,29 +51,76 @@
       console.error("Streaming error:", err);
       error.set(err.message);
       loading.set(false);
+      streamActive = false;
     }
+  }
+
+  function stopStreaming() {
+    streamActive = false;
   }
 </script>
 
-<!-- Buttons for selecting the expertise level -->
-<button on:click={() => streamAnalysis("beginner")} disabled={$loading}
-  >Explain for Beginners</button
->
-<button on:click={() => streamAnalysis("intermediate")} disabled={$loading}
-  >Explain for Intermediates</button
->
-<button on:click={() => streamAnalysis("expert")} disabled={$loading}
-  >Explain for Experts</button
->
+<div class="streaming-controls">
+  <button on:click={() => streamAnalysis("beginner")} disabled={$loading}>Explain for Beginners</button>
+  <button on:click={() => streamAnalysis("intermediate")} disabled={$loading}>Explain for Intermediates</button>
+  <button on:click={() => streamAnalysis("expert")} disabled={$loading}>Explain for Experts</button>
+  {#if $loading}
+    <button on:click={stopStreaming} class="stop-button">Stop Streaming</button>
+  {/if}
+</div>
 
-<!-- The rest of your component remains the same... -->
 {#if $loading}
-  <p>Loading...</p>
+  <p>Loading...</p> <!-- Consider replacing with a spinner or progress bar -->
 {:else if $error}
   <p class="error">{$error}</p>
 {:else}
-  <div class="analysis-result">
+  <div class="streaming-output-container">
     <h2>Streaming Analysis Result</h2>
     <pre class="ai-output">{$analysisResult}</pre>
   </div>
 {/if}
+
+<style>
+  .streaming-controls button {
+    padding: 10px 20px;
+    margin-right: 10px;
+    border-radius: 5px;
+    border: none;
+    background-color: #6200ea;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .streaming-controls button:hover {
+    background-color: #7c4dff;
+  }
+  .streaming-controls button:disabled {
+    background-color: #bbb;
+    cursor: default;
+  }
+  .stop-button {
+    background-color: #ff1744;
+  }
+  .stop-button:hover {
+    background-color: #f01440;
+  }
+  .streaming-output-container {
+    margin-top: 20px;
+  }
+  .ai-output {
+    font-family: 'Courier New', monospace;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: #f5f5f5;
+    border-radius: 5px;
+    padding: 20px;
+    border: 1px solid #ddd;
+  }
+  .error {
+    color: #d32f2f;
+    background-color: #ffcdd2;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 10px;
+  }
+</style>
