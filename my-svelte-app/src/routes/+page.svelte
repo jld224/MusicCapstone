@@ -5,7 +5,7 @@
   import CodeAnalysis from "../AIAnalysis.svelte";
   import ChordString from "../ChordString.svelte";
   import StreamAnalysis from "../StreamingAnalysis.svelte";
-  import { analysisResultStore } from '../stores.js';
+  import { analysisResultStore } from "../stores.js";
 
   const songs = writable([]);
   let selectedSong = "";
@@ -14,7 +14,7 @@
   const loading = writable(false);
   const fetchStatus = writable("");
   let searchQuery = "";
-
+  let formattedMeasures = ""; // Add this line
 
   onMount(async () => {
     loading.set(true);
@@ -65,7 +65,7 @@
       const data = await response.json();
       analysisResult.set(data);
       analysisResultStore.set(data);
-      console.log("Storing song data on main page: ", analysisResult)
+      console.log("Storing song data on main page: ", analysisResult);
     } catch (err) {
       console.error("Error:", err);
       error.set(err.message);
@@ -78,6 +78,36 @@
     song.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  function formatMeasures(measures) {
+    const maxMeasuresPerLine = 4;
+    const lines = [];
+    let currentLineMeasures = [];
+
+    measures.forEach((measure, index) => {
+      // Add space before each capital letter unless it is the start of the measure
+      const formattedMeasure = measure
+        .trim()
+        .replace(/(?<!^|\s)([A-Z])/g, ' $1')
+        .replace(/\|/g, '') // Remove existing bars to control spacing
+        .trim();
+
+      currentLineMeasures.push(formattedMeasure);
+
+      // If it's the fourth measure or the last measure, format the line
+      if ((index + 1) % maxMeasuresPerLine === 0 || index === measures.length - 1) {
+        const line = currentLineMeasures.join(' | ');
+        lines.push('| ' + line + ' |');
+        currentLineMeasures = []; // Reset for the next line
+      }
+    });
+
+    return lines.join('\n');
+  }
+
+  // Use the reactive statement to format measures when $analysisResult changes
+  $: if ($analysisResult && $analysisResult.measures) {
+    formattedMeasures = formatMeasures($analysisResult.measures);
+  }
 </script>
 
 <div class="search-section">
@@ -94,7 +124,11 @@
       <option value={song.link}>{song.title}</option>
     {/each}
   </select>
-  <button on:click={analyzeMusic} disabled={$loading || !selectedSong} class="analyze-button">
+  <button
+    on:click={analyzeMusic}
+    disabled={$loading || !selectedSong}
+    class="analyze-button"
+  >
     Analyze
   </button>
 </div>
@@ -115,11 +149,11 @@
     <p><strong>Key:</strong> {$analysisResult.key}</p>
     <p><strong>Time Signature:</strong> {$analysisResult.time_signature}</p>
     <h3>Chord Progression</h3>
-    <pre>{$analysisResult.measures.join('\n')}</pre>
+    <pre>{formattedMeasures}</pre>
     <p><strong>Chord String:</strong> {$analysisResult.chord_string}</p>
     <div>
       <ChordString />
-    </div>  
+    </div>
   </div>
 {/if}
 
@@ -129,7 +163,7 @@
 
 <style>
   :global(body) {
-    font-family: 'Open Sans', sans-serif;
+    font-family: "Open Sans", sans-serif;
     margin: 0;
     padding: 0;
     background: #fafafa;
@@ -177,7 +211,8 @@
     background-color: #a0a0a0;
   }
 
-  .status-message, .loading-state {
+  .status-message,
+  .loading-state {
     text-align: center;
     margin-top: 20px;
   }
@@ -220,7 +255,7 @@
     overflow-x: auto;
   }
 
-  .stream-analysis-container{
+  .stream-analysis-container {
     margin-top: 30px;
   }
 </style>
