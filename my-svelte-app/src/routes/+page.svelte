@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { writable } from "svelte/store";
   import ChordChart from "../ChordChart.svelte";
   import CodeAnalysis from "../AIAnalysis.svelte";
@@ -8,13 +8,15 @@
   import { analysisResultStore } from "../stores.js";
 
   const songs = writable([]);
-  let selectedSong = "";
+  let selectedSong = ""; // Initialize as empty string or appropriate initial value
   const analysisResult = writable(null);
   const error = writable("");
   const loading = writable(false);
   const fetchStatus = writable("");
   let searchQuery = "";
-  let formattedMeasures = ""; // Add this line
+  let formattedMeasures = "";
+  let formattedChordProgression = '';
+  
 
   onMount(async () => {
     loading.set(true);
@@ -39,10 +41,6 @@
     }
   });
 
-  function handleSongSelection(event) {
-    selectedSong = event.target.value;
-  }
-
   async function analyzeMusic() {
     if (!selectedSong) {
       error.set("Please select a song for analysis.");
@@ -63,9 +61,8 @@
         );
       }
       const data = await response.json();
-      analysisResult.set(data);
-      analysisResultStore.set(data);
-      console.log("Storing song data on main page: ", analysisResult);
+      analysisResult.set(data.songData); // Assuming the backend returns an object with a songData property
+      analysisResultStore.set(data.songData);
     } catch (err) {
       console.error("Error:", err);
       error.set(err.message);
@@ -78,35 +75,64 @@
     song.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  function formatMeasures(measures) {
-    const maxMeasuresPerLine = 4;
-    const lines = [];
-    let currentLineMeasures = [];
-
-    measures.forEach((measure, index) => {
-      // Add space before each capital letter unless it is the start of the measure
-      const formattedMeasure = measure
-        .trim()
-        .replace(/(?<!^|\s)([A-Z])/g, ' $1')
-        .replace(/\|/g, '') // Remove existing bars to control spacing
-        .trim();
-
-      currentLineMeasures.push(formattedMeasure);
-
-      // If it's the fourth measure or the last measure, format the line
-      if ((index + 1) % maxMeasuresPerLine === 0 || index === measures.length - 1) {
-        const line = currentLineMeasures.join(' | ');
-        lines.push('| ' + line + ' |');
-        currentLineMeasures = []; // Reset for the next line
-      }
-    });
-
-    return lines.join('\n');
+  // Helper function to create evenly spaced chords per measure based on time signature
+  function evenlySpacedChords(measure, timeSignature) {
+    const beatsPerMeasure = parseInt(timeSignature.split('/')[0]);
+    const spacePerBeat = 10; // Adjust the space per beat as needed
+    return measure.map(chord => {
+      // Determine the space needed for this chord
+      const chordLength = chord.length;
+      const spacesToAdd = (spacePerBeat - chordLength) > 0 ? (spacePerBeat - chordLength) : 0;
+      return chord + ' '.repeat(spacesToAdd);
+    }).join('');
   }
 
-  // Use the reactive statement to format measures when $analysisResult changes
-  $: if ($analysisResult && $analysisResult.measures) {
-    formattedMeasures = formatMeasures($analysisResult.measures);
+  // Determine the max chord length in each measure to ensure uniform spacing
+  function getMaxChordLengthPerMeasure(measures) {
+    let maxLengths = new Array(measures[0].length).fill(0);
+    for (let measure of measures) {
+      measure.forEach((chord, index) => {
+        if (chord.length > maxLengths[index]) {
+          maxLengths[index] = chord.length;
+        }
+      });
+    }
+    return maxLengths.map(length => length + 2); // Add 2 for padding
+  }
+
+  // Function to format measures for display
+  function formatChordProgression(measures, maxChordLengths) {
+    const measuresPerLine = 4;
+    let formattedProgression = '';
+    let line = '';
+    let measureCounter = 0;
+
+    for (let measure of measures) {
+      let formattedMeasure = measure.map((chord, index) => {
+        // Pad each chord string to the max length for that column
+        return chord.padEnd(maxChordLengths[index], ' ');
+      }).join(' ');
+
+      line += '| ' + formattedMeasure;
+      measureCounter++;
+
+      // Check for line break
+      if (measureCounter % measuresPerLine === 0 || measureCounter === measures.length) {
+        formattedProgression += line + ' |\n';
+        line = ''; // Reset for the next line
+      }
+    }
+
+    return formattedProgression.trim();
+  }
+
+  // Calculate the max chord lengths and format the chord progression
+  let maxChordLengths;
+  $: if ($analysisResult && $analysisResult.music && $analysisResult.music.measures) {
+    maxChordLengths = getMaxChordLengthPerMeasure($analysisResult.music.measures);
+    formattedChordProgression = formatChordProgression($analysisResult.music.measures, maxChordLengths);
+  } else {
+    formattedChordProgression = '';
   }
 </script>
 
@@ -118,15 +144,15 @@
     class="search-input"
     aria-label="Search songs by title"
   />
-  <select on:change={handleSongSelection} class="song-select">
+  <select bind:value={selectedSong} class="song-select">
     <option value="">-- Select a song --</option>
-    {#each filteredSongs as song}
+    {#each $songs as song}
       <option value={song.link}>{song.title}</option>
     {/each}
   </select>
   <button
     on:click={analyzeMusic}
-    disabled={$loading || !selectedSong}
+    disabled={$loading || selectedSong === ""}
     class="analyze-button"
   >
     Analyze
@@ -141,25 +167,36 @@
   <div class="loading-state">Loading...</div>
 {:else if $error}
   <p class="error">{$error}</p>
-{:else if $analysisResult}
+  {:else if $analysisResult}
   <div class="analysis-result">
     <h2>Analysis Result for "{$analysisResult.title}"</h2>
     <p><strong>Composer:</strong> {$analysisResult.composer}</p>
     <p><strong>Style:</strong> {$analysisResult.style}</p>
     <p><strong>Key:</strong> {$analysisResult.key}</p>
-    <p><strong>Time Signature:</strong> {$analysisResult.time_signature}</p>
+    <p><strong>Time Signature:</strong> {$analysisResult.music.timeSignature}</p>
     <h3>Chord Progression</h3>
-    <pre>{formattedMeasures}</pre>
-    <p><strong>Chord String:</strong> {$analysisResult.chord_string}</p>
+    <div class="chord-progression">
+      {#if formattedChordProgression}
+        <pre>{formattedChordProgression}</pre>
+      {:else}
+        <p>No chord progression available.</p>
+      {/if}
+    </div>
+    <p><strong>Chord String:</strong> {$analysisResult.music.raw}</p>
     <div>
       <ChordString />
     </div>
+    <!-- ...other components like ChordString, etc... -->
   </div>
 {/if}
 
 <div class="stream-analysis-container">
   <StreamAnalysis />
 </div>
+
+{#if $fetchStatus}
+  <p class="status-message">{$fetchStatus}</p>
+{/if}
 
 <style>
   :global(body) {

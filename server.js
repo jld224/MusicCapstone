@@ -7,6 +7,8 @@ const axios = require('axios');
 require('dotenv').config();
 const OpenAI = require('openai');
 const { analysisResultStore } = './my-svelte-app/src/stores';
+const iRealReader = require('ireal-reader');
+
 
 
 const openai = new OpenAI({
@@ -77,10 +79,14 @@ app.post('/stream_AI_Analysis', async (req, res) => {
     const { music, choice } = req.body;
 
     const systemPrompts = {
-        beginner: "Provide a comprehensive explanation of the music below, like you were describing it to a beginning musician. Go in-depth into as many aspects as you can.",
-        intermediate: "Provide a comprehensive explanation of the music below, like you were describing it to an amateur/advanced musician. Go in-depth into as many aspects as you can.",
-        expert: "Provide a comprehensive explanation of the music below, like you were describing it to a professional musician. Go in-depth into as many aspects as you can.",
+        beginner: "Imagine you're introducing the wonders of music to someone who has just begun their musical journey. With the piece below, guide them through the magical world of melodies, rhythms, and harmonies in a way that lights up their curiosity. Start by describing the title and the composer's background, setting the stage for what makes this piece special. Dive into the melody, explaining how it moves and changes, and liken it to storytelling—where does it take the listener? Discuss the rhythm and how it forms the heartbeat of the piece, supporting the melody. Simplify the concept of key, perhaps comparing it to different moods or colors in a painting, and touch on the significance of the time signature, illustrating its role in shaping the dance of the notes. For the chords and measures, use analogies to show how they interact, creating moments of tension and release, much like the chapters of a book. Encourage the listener to notice these elements, making their listening experience richer and more informed. Remember, the goal is not to overwhelm but to unveil the beauty of music's building blocks, making them feel intrigued and empowered to explore more.",
+        intermediate: "Approach the piece of music below with the insight of an amateur or advanced musician, ready to deepen your understanding and appreciation of its complexities. Begin by contextualizing the composer’s intent and historical significance, drawing connections between the time period, cultural influences, and how they might have shaped the musical choices. Dive into the structure of the piece, dissecting its form and how it adheres to or diverges from traditional compositions in its genre. Analyze the melody, exploring its development, motifs, and how it interacts with the harmonic progressions to convey emotion and narrative. Examine the harmony in detail, identifying the use of conventional and unconventional chords, modulations, and how these choices impact the overall mood and tension within the piece. Discuss the rhythm and meter, noting any rhythmic motifs, syncopations, or irregularities that add depth or drive the piece forward. Delve into the texture and instrumentation, commenting on how the composer utilizes different voices or instruments to create contrast, balance, and unity. Highlight any technical challenges or notable passages that require advanced skill or interpretation, offering advice on how to approach these sections. Finally, encourage a critical listening stance, prompting reflection on how the piece’s elements combine to create a cohesive whole and what this might convey on a deeper, emotional level. This exploration should not only enhance your technical knowledge but also enrich your overall musical experience, inviting you to engage with music more thoughtfully and passionately.",
+        expert: "Engage with the music piece below through the lens of your professional expertise, delving into its intricacies with the precision and depth it demands. Begin by situating the work within its historical and theoretical context, analyzing how it reflects or diverges from the musical traditions of its time. Explore the compositional structure in detail, including its formal design, thematic development, and the innovative use of motifs. Conduct a thorough harmonic analysis, identifying key modulations, chordal textures, and the employment of advanced harmonic techniques such as chromaticism, polytonality, or others unique to the piece. Discuss the melodic architecture, examining the use of intervallic relationships, contour, and how melody interacts with harmony to create tension, resolution, and expressivity. Delve into the rhythmic complexity, noting the use of mixed meters, polyrhythms, and rhythmic motifs, and their effect on the overall dynamism and pacing of the piece. Evaluate the orchestration and texture, considering how the composer exploits the timbral qualities of instruments to enhance the musical narrative. Address interpretive challenges and performance considerations, offering insights into conveying the emotional depth, technical demands, and stylistic nuances of the piece.Reflect on the piece’s place within the composer’s oeuvre and its contribution to the repertoire, considering aspects of innovation, influence, and legacy. Conclude by critically assessing the work’s artistic significance, its emotional impact, and its relevance to contemporary music performance and scholarship. This comprehensive exploration should not only affirm your technical mastery but also deepen your connection to the piece, inspiring a nuanced interpretation that resonates with both musicians and audiences alike.",
+        composer: "Delve into the life and times of the composer behind the music piece below. Explore their journey, highlighting key moments that may have influenced their musical style and output. Discuss any personal, social, or political factors that impacted their work. How do you see these influences reflected in the piece? Consider the composer’s legacy: how have they influenced other musicians, and how is their work perceived in the context of the broader musical canon? Provide insights into the challenges they faced, their most significant achievements, and any controversies or pivotal moments that define their contribution to the world of music.",
+        culture: "Examine the cultural and historical context surrounding the creation of the music piece below. How does it reflect the social, political, or cultural climate of its time? Discuss its origins, including any traditional influences or innovations that it brought to its genre. Analyze how the piece was initially received by audiences and critics, and how its popularity or significance has evolved over time. Explore its role in cultural movements or events, its impact on subsequent musical developments, and its relevance in today’s cultural landscape. What elements of the piece have resonated with diverse audiences, and why does it continue to captivate or inspire people across different cultures and generations?",
+        influence: "Focus on the composition itself, dissecting the elements that set it apart within its genre or the composer's body of work. What innovative techniques or themes does it introduce? Discuss any known inspirations for the piece, whether they be personal experiences of the composer, literary works, natural phenomena, or other artworks. How has this piece influenced other composers, musicians, or genres? If applicable, explore its adaptation into other forms of media (e.g., film, theater, dance) and the significance of these adaptations. Conclude by reflecting on the piece’s enduring legacy: in what ways has it shaped or challenged our understanding of music, and how does it continue to inspire creativity and innovation within the arts?"
     };
+
 
     if (!systemPrompts[choice]) {
         return res.status(400).json({ error: 'Invalid choice provided.' });
@@ -134,42 +140,30 @@ app.get('/songs', async (req, res) => {
 
 // Improved error handling for song analysis
 app.post('/analyze', (req, res) => {
-    const { link } = req.body; // Directly use the link received in the request body
+    const { link } = req.body;
 
-    // Check if the link is provided
     if (!link) {
-        return res.status(400).json({ error: 'No song link provided for analysis.' });
+        return res.status(400).json({ error: 'No URL provided for analysis.' });
     }
 
-    // Assume the path to the Python script is correct and it's named 'music_analysis.py' located in 'python' directory.
-    // Adjust the path as necessary to match your actual file structure.
-    const pythonProcess = spawn('python3', ['python/music_analysis.py', link]);
+    try {
+        const iRealData = iRealReader(link);
+        console.log(iRealData); // Debug to see what iRealData looks like
 
-    let result = '';
-    pythonProcess.stdout.on('data', (data) => {
-        result += data.toString();
-    });
-
-    pythonProcess.on('close', (code) => {
-        result = result.trim(); // Trim the result to remove leading/trailing whitespace
-
-        const firstCurlyIndex = result.indexOf('{');
-        const jsonString = result.substring(firstCurlyIndex);
-
-        if (code !== 0) {
-            console.log(`Python script exited with code ${code}`);
-            return res.status(500).json({ error: 'Failed to analyze the song. Please check the server logs for more details.' });
+        // Validate the structure before accessing deep properties
+        if (!iRealData || !iRealData.songs || iRealData.songs.length === 0) {
+            return res.status(400).json({ error: 'No songs available in the provided data.' });
         }
 
-        try {
-            const parsedResult = JSON.parse(jsonString);
-            //console.log(parsedResult)
-            res.json(parsedResult);
-        } catch (error) {
-            console.error('Failed to parse Python script output:', error);
-            res.status(500).json({ error: 'Failed to parse analysis result. Please ensure the output is valid JSON.' });
-        }
-    });
+        const songData = iRealData.songs[0]; // Directly access the first song in the array
+        res.json({ songData });
+    } catch (error) {
+        console.error('Error processing iReal URL:', error);
+        res.status(500).json({
+            error: 'Failed to process the iReal URL.',
+            details: error.message
+        });
+    }
 });
 
 

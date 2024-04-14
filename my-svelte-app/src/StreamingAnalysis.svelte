@@ -64,6 +64,9 @@
   <button on:click={() => streamAnalysis("beginner")} disabled={$loading}>Explain for Beginners</button>
   <button on:click={() => streamAnalysis("intermediate")} disabled={$loading}>Explain for Intermediates</button>
   <button on:click={() => streamAnalysis("expert")} disabled={$loading}>Explain for Experts</button>
+  <button on:click={() => streamAnalysis("composer")} disabled={$loading}>Learn about the composer</button>
+  <button on:click={() => streamAnalysis("culture")} disabled={$loading}>The Culture behind the song</button>
+  <button on:click={() => streamAnalysis("influence")} disabled={$loading}>The Songs Influence</button>
   {#if $loading}
     <button on:click={stopStreaming} class="stop-button">Stop Streaming</button>
   {/if}
