@@ -1,21 +1,20 @@
 <script>
   import { writable } from "svelte/store";
   import { onMount } from "svelte";
-  import CodeAnalysis from "../AIAnalysis.svelte";
   import ChordString from "../ChordString.svelte";
   import StreamAnalysis from "../StreamingAnalysis.svelte";
-  import { analysisResultStore } from "../stores.js";
   import MusicXMLDisplay from "../MusicXMLDisplay.svelte";
+  import { analysisResultStore } from "../stores.js";
 
   const songs = writable([]);
   let selectedSong = "";
+  let customLink = "";
+  let useCustomLink = false; // Flag to toggle input method
   const analysisResult = writable(null);
   const error = writable("");
   const loading = writable(false);
   const fetchStatus = writable("");
   let searchQuery = "";
-  let formattedChordProgression = "";
-  let formattedMeasures = "";
 
   onMount(async () => {
     loading.set(true);
@@ -27,9 +26,7 @@
         songs.set(data);
         fetchStatus.set("");
       } else {
-        throw new Error(
-          `Failed to fetch songs: server responded with status ${response.status}`
-        );
+        throw new Error(`Failed to fetch songs: server responded with status ${response.status}`);
       }
     } catch (err) {
       console.error("Error loading songs:", err);
@@ -41,8 +38,9 @@
   });
 
   async function analyzeMusic() {
-    if (!selectedSong) {
-      error.set("Please select a song for analysis.");
+    let songLink = useCustomLink ? customLink : selectedSong;
+    if (!songLink) {
+      error.set("Please provide a song link for analysis.");
       return;
     }
     loading.set(true);
@@ -52,12 +50,10 @@
       const response = await fetch("http://localhost:3001/analyzeXML", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ irealLink: selectedSong }),
+        body: JSON.stringify({ irealLink: songLink }),
       });
       if (!response.ok) {
-        throw new Error(
-          `Failed to analyze the song: server responded with status ${response.status}`
-        );
+        throw new Error(`Failed to analyze the song: server responded with status ${response.status}`);
       }
       const { songData } = await response.json();
       analysisResult.set(songData);
@@ -71,30 +67,42 @@
     }
   }
 
-  $: filteredSongs = $songs.filter((song) =>
+  $: filteredSongs = $songs.filter(song =>
     song.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-
 </script>
 
 <div class="search-section">
-  <input
-    type="text"
-    bind:value={searchQuery}
-    placeholder="Search by title..."
-    class="search-input"
-    aria-label="Search songs by title"
-  />
-  <select bind:value={selectedSong} class="song-select">
-    <option value="">-- Select a song --</option>
-    {#each filteredSongs as song}
-      <option value={song.link}>{song.title}</option>
-    {/each}
-  </select>
+  <label>
+    <input type="checkbox" bind:checked={useCustomLink}>
+    Use custom iReal Pro link
+  </label>
+
+  {#if useCustomLink}
+    <input
+      type="text"
+      bind:value={customLink}
+      placeholder="Enter iReal Pro link..."
+      class="search-input"
+    />
+  {:else}
+    <input
+      type="text"
+      bind:value={searchQuery}
+      placeholder="Search by title..."
+      class="search-input"
+    />
+    <select bind:value={selectedSong} class="song-select">
+      <option value="">-- Select a song --</option>
+      {#each filteredSongs as song}
+        <option value={song.link}>{song.title}</option>
+      {/each}
+    </select>
+  {/if}
+
   <button
     on:click={analyzeMusic}
-    disabled={$loading || selectedSong === ""}
+    disabled={$loading || (useCustomLink ? customLink === "" : selectedSong === "")}
     class="analyze-button"
   >
     Analyze
@@ -134,36 +142,27 @@
 {/if}
 
 <style>
-  .osmd-container {
-    width: 100%; /* Adjust the width as needed */
-    height: auto; /* Adjust the height as needed */
-  }
-  :global(body) {
-    font-family: "Open Sans", sans-serif;
-    margin: 0;
-    padding: 0;
-    background: #fafafa;
-  }
-
   .search-section {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
     align-items: center;
     gap: 10px;
     margin-top: 20px;
   }
 
   .search-input,
-  .song-select {
+  .song-select,
+  .link-type-select {
     border: 1px solid #ccc;
     border-radius: 20px;
     padding: 10px 15px;
     font-size: 16px;
-    transition: border-color 0.3s;
+    width: 300px;
   }
 
   .search-input:focus,
-  .song-select:focus {
+  .song-select:focus,
+  .link-type-select:focus {
     outline: none;
     border-color: #6200ea;
   }
@@ -217,20 +216,17 @@
   .analysis-result pre {
     color: #333;
   }
-
-  .analysis-result h3 {
+  analysis-result h3 {
     border-bottom: 2px solid #f0f0f0;
     padding-bottom: 10px;
     margin-bottom: 20px;
   }
-
   .analysis-result pre {
     background-color: #f9f9f9;
     border-radius: 5px;
     padding: 15px;
     overflow-x: auto;
   }
-
   .stream-analysis-container {
     margin-top: 30px;
   }
