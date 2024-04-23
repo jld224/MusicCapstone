@@ -26,7 +26,9 @@
         songs.set(data);
         fetchStatus.set("");
       } else {
-        throw new Error(`Failed to fetch songs: server responded with status ${response.status}`);
+        throw new Error(
+          `Failed to fetch songs: server responded with status ${response.status}`
+        );
       }
     } catch (err) {
       console.error("Error loading songs:", err);
@@ -53,7 +55,9 @@
         body: JSON.stringify({ irealLink: songLink }),
       });
       if (!response.ok) {
-        throw new Error(`Failed to analyze the song: server responded with status ${response.status}`);
+        throw new Error(
+          `Failed to analyze the song: server responded with status ${response.status}`
+        );
       }
       const { songData } = await response.json();
       analysisResult.set(songData);
@@ -67,167 +71,187 @@
     }
   }
 
-  $: filteredSongs = $songs.filter(song =>
+  $: filteredSongs = $songs.filter((song) =>
     song.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  $: if ($analysisResult) {
+    // This is where you could do something when $analysisResult changes, like logging
+    console.log("Analysis result updated:", $analysisResult);
+  }
 </script>
 
-<div class="search-section">
-  <label>
-    <input type="checkbox" bind:checked={useCustomLink}>
-    Use custom iReal Pro link
-  </label>
+<div class="container">
+  <!-- Header with a subtle shadow for depth -->
+  <header>
+    <h1>Analyze Music</h1>
+  </header>
 
-  {#if useCustomLink}
-    <input
-      type="text"
-      bind:value={customLink}
-      placeholder="Enter iReal Pro link..."
-      class="search-input"
-    />
-  {:else}
-    <input
-      type="text"
-      bind:value={searchQuery}
-      placeholder="Search by title..."
-      class="search-input"
-    />
-    <select bind:value={selectedSong} class="song-select">
-      <option value="">-- Select a song --</option>
-      {#each filteredSongs as song}
-        <option value={song.link}>{song.title}</option>
-      {/each}
-    </select>
-  {/if}
+  <!-- Search Section with a clear separation and focus effect -->
+  <section class="search-section">
+    <div class="toggle-custom-link">
+      <label>
+        <input type="checkbox" bind:checked={useCustomLink} />
+        Use custom iReal Pro link
+      </label>
+    </div>
+    <div class="input-group">
+      {#if useCustomLink}
+        <input
+          type="text"
+          bind:value={customLink}
+          placeholder="Enter iReal Pro link..."
+        />
+      {:else}
+        <input
+          type="text"
+          bind:value={searchQuery}
+          placeholder="Search by title..."
+        />
+        <select bind:value={selectedSong}>
+          <option value="">Select a song</option>
+          {#each filteredSongs as song}
+            <option value={song.link}>{song.title}</option>
+          {/each}
+        </select>
+      {/if}
+      <button
+        on:click={analyzeMusic}
+        disabled={$loading ||
+          (useCustomLink ? customLink === "" : selectedSong === "")}
+        >Analyze</button
+      >
+    </div>
+  </section>
 
-  <button
-    on:click={analyzeMusic}
-    disabled={$loading || (useCustomLink ? customLink === "" : selectedSong === "")}
-    class="analyze-button"
-  >
-    Analyze
-  </button>
+  <!-- Main content area -->
+  <main class="content-area">
+    <div class="half-width left-side">
+      <StreamAnalysis />
+      <!-- Other contents for the left side can go here -->
+    </div>
+    <div class="half-width right-side">
+      {#if $analysisResult}
+        <div class="analysis-result">
+          <h2>{$analysisResult.title}</h2>
+          <p><strong>Composer:</strong> {$analysisResult.composer}</p>
+          <p><strong>Style:</strong> {$analysisResult.style}</p>
+        </div>
+        {#if $analysisResult.musicXml}
+          <MusicXMLDisplay musicXml={$analysisResult.musicXml} />
+        {/if}
+      {/if}
+    </div>
+  </main>
 </div>
-
-{#if $fetchStatus}
-  <p class="status-message">{$fetchStatus}</p>
-{/if}
-
-{#if $loading}
-  <div class="loading-state">Loading...</div>
-{:else if $error}
-  <p class="error">{$error}</p>
-{:else if $analysisResult}
-  <div class="analysis-result">
-    <h2>Analysis Result for "{$analysisResult.title}"</h2>
-    <p><strong>Composer:</strong> {$analysisResult.composer}</p>
-    <p><strong>Style:</strong> {$analysisResult.style}</p>
-    <p><strong>Key:</strong> {$analysisResult.key}</p>
-    <p><strong>bpm:</strong> {$analysisResult.bpm}</p>
-    <p><strong>MusicXML:</strong></p>
-    <pre>{JSON.stringify($analysisResult.musicXml, null, 2)}</pre>
-
-    {#if $analysisResult.musicXml}
-      <MusicXMLDisplay musicXml={$analysisResult.musicXml} />
-    {/if}
-  </div>
-{/if}
-
-<div class="stream-analysis-container">
-  <StreamAnalysis />
-</div>
-
-{#if $fetchStatus}
-  <p class="status-message"></p>
-{/if}
 
 <style>
+  :global(body) {
+    margin: 0;
+    font-family: "Arial", sans-serif;
+  }
+
+  header {
+    text-align: center;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  h1 {
+    color: #333;
+    margin: 0;
+  }
+
+  .container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
   .search-section {
+    background: #f8f8f8;
+    padding: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    gap: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+
+  .toggle-custom-link {
+    display: flex;
+    align-items: center;
+  }
+
+  .input-group {
+    display: flex;
     gap: 10px;
-    margin-top: 20px;
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
-  .search-input,
-  .song-select,
-  .link-type-select {
-    border: 1px solid #ccc;
-    border-radius: 20px;
+  input,
+  select,
+  button {
     padding: 10px 15px;
-    font-size: 16px;
-    width: 300px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
   }
 
-  .search-input:focus,
-  .song-select:focus,
-  .link-type-select:focus {
-    outline: none;
+  input:focus,
+  select:focus {
     border-color: #6200ea;
+    outline: none;
   }
 
-  .analyze-button {
+  button {
     background-color: #6200ea;
     color: white;
-    border: none;
-    border-radius: 20px;
-    padding: 10px 20px;
-    font-size: 16px;
     cursor: pointer;
     transition: background-color 0.3s;
   }
 
-  .analyze-button:hover {
+  button:hover {
     background-color: #3700b3;
   }
 
-  .analyze-button:disabled {
+  button:disabled {
     background-color: #a0a0a0;
   }
 
-  .status-message,
-  .loading-state {
-    text-align: center;
+  .content-area {
+    display: flex;
+    flex-wrap: nowrap; /* Do not wrap */
     margin-top: 20px;
   }
 
-  .error {
-    color: #b00020;
-    background-color: #ffebee;
-    padding: 10px;
-    border-radius: 5px;
-    text-align: center;
-    margin-top: 20px;
+  .half-width {
+    flex-basis: 50%; /* Each side takes up half the width */
+    flex-grow: 1;
+    overflow-y: auto; /* Allows vertical scrolling if content overflows */
+    padding: 1rem; /* Adjust padding as needed */
   }
 
-  .analysis-result {
-    background-color: #ffffff;
-    border: 1px solid #e0e0e0;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    padding: 30px;
-    margin: 30px auto;
-    max-width: 800px;
+  .left-side {
+    /* Styles specific to the left side */
+    /* ... */
   }
 
-  .analysis-result h2,
-  .analysis-result p,
-  .analysis-result pre {
-    color: #333;
+  .right-side {
+    /* Styles specific to the right side */
+    /* ... */
   }
-  analysis-result h3 {
-    border-bottom: 2px solid #f0f0f0;
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-  }
-  .analysis-result pre {
-    background-color: #f9f9f9;
-    border-radius: 5px;
-    padding: 15px;
-    overflow-x: auto;
-  }
-  .stream-analysis-container {
-    margin-top: 30px;
+
+  /* Adjust for mobile responsiveness */
+  @media (max-width: 767px) {
+    .content-area {
+      flex-direction: column;
+    }
+    .half-width {
+      flex-basis: auto; /* Take the full width */
+      margin-bottom: 1rem; /* Space between stacked elements */
+    }
   }
 </style>

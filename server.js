@@ -11,8 +11,6 @@ const iRealReader = require('ireal-reader');
 const iReal2MusicXML = require('ireal-musicxml');
 
 
-
-
 const openai = new OpenAI({
     apiKey: process.env['OPENAI_API_KEY'], // Ensure this environment variable is set
 });
@@ -119,7 +117,7 @@ app.post('/stream_AI_Analysis', async (req, res) => {
     }
 
     const { music, choice } = req.body;
-    //console.log(JSON.stringify(req.body));
+    console.log(JSON.stringify(req.body));
 
 
     const systemPrompts = {

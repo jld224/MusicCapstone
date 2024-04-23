@@ -194,8 +194,8 @@
   function checkForRepeats(token, state) {
     const match = token.match(/<repeat (\d+) (\d+)>/);
     if (!match) {
-        console.error("Invalid repeat token format:", token);
-        return;
+      console.error("Invalid repeat token format:", token);
+      return;
     }
     const numberOfMeasures = parseInt(match[1], 10);
     const timesToRepeat = parseInt(match[2], 10);
@@ -203,9 +203,9 @@
     const startIndex = state.measures.length - numberOfMeasures;
     const repeatSection = state.measures.slice(startIndex);
     for (let i = 0; i < timesToRepeat; i++) {
-        state.measures.push(...repeatSection);
+      state.measures.push(...repeatSection);
     }
-}
+  }
 
   function repeatLastMeasureAndAddNew(tokenValue, state) {
     state = ensureStateInitialization(state);
@@ -332,9 +332,7 @@
       <div class="measure">
         <h2>Measure {id}</h2>
         {#each measure as chord}
-          <button class="chord" on:click={() => handleChordClick(chord)}>
-            {chord}
-          </button>
+          {chord}
         {/each}
       </div>
     {/each}
@@ -351,13 +349,5 @@
   }
   .measure {
     margin-bottom: 24px;
-  }
-  .chord {
-    background-color: white;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 4px 8px;
-    margin-right: 4px;
-    cursor: pointer;
   }
 </style>
