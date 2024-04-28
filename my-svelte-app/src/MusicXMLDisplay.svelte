@@ -1,26 +1,24 @@
 <script>
-  import { onMount, tick } from "svelte";
+  import { onMount } from "svelte";
   import { writable } from "svelte/store";
   import Tooltip from "./tooltip.svelte";
 
   export let musicXml;
   let osmdContainer;
   let OpenSheetMusicDisplay;
+  let osmd;
 
-  let tooltipVisible = writable(false);
-  let tooltipContent = writable("");
-  let tooltipX = writable(0);
-  let tooltipY = writable(0);
+  const tooltipVisible = writable(false);
+  const tooltipContent = writable("");
+  const tooltipPosition = writable({ x: 0, y: 0 });
 
   onMount(async () => {
     if (typeof window !== "undefined") {
       const OSMDPackage = await import("opensheetmusicdisplay");
-      OpenSheetMusicDisplay =
-        OSMDPackage.default?.OpenSheetMusicDisplay ||
-        OSMDPackage.OpenSheetMusicDisplay;
+      OpenSheetMusicDisplay = OSMDPackage.OpenSheetMusicDisplay;
 
       if (OpenSheetMusicDisplay && musicXml) {
-        const osmd = new OpenSheetMusicDisplay(osmdContainer, {
+        osmd = new OpenSheetMusicDisplay(osmdContainer, {
           autoResize: true,
           drawTitle: true,
         });
@@ -32,27 +30,35 @@
   });
 
   function setupChordInteractions() {
-    const chords = osmdContainer.querySelectorAll(".vf-text text");
-    chords.forEach((chord) => {
-      chord.addEventListener("mouseenter", (event) => {
-        tooltipVisible.set(true);
-        tooltipContent.set(`Chord: ${chord.textContent.trim()}`);
-        let rect = chord.getBoundingClientRect();
-        tooltipX.set(rect.left + window.scrollX);
-        tooltipY.set(rect.top + window.scrollY);
-      });
+  // Assuming `osmdContainer` is a predefined variable that references the container of the SVG elements.
+  // Select all text elements within SVGs with class `vf-text`
+  const chords = osmdContainer.querySelectorAll(".vf-text text");
 
-      chord.addEventListener("mouseleave", () => {
-        tooltipVisible.set(false);
-      });
+  // Add event listeners to each chord
+  chords.forEach((chord) => {
+    chord.addEventListener("mouseenter", (event) => {
+      // Set the tooltip to be visible
+      tooltipVisible.set(true);
+      // Set the content of the tooltip to the text content of the chord, trimmed of whitespace
+      tooltipContent.set(`Chord: ${chord.textContent.trim()}`);
+      // Calculate the position for the tooltip based on the chord's bounding rectangle
+      let rect = chord.getBoundingClientRect();
+      // Set the position for the tooltip, adjusted for the current scroll position
+      tooltipPosition.set({ x: rect.left + window.scrollX, y: rect.top + window.scrollY });
     });
-  }
+
+    // Add an event listener for when the mouse leaves the chord, to hide the tooltip
+    chord.addEventListener("mouseleave", () => {
+      tooltipVisible.set(false);
+    });
+  });
+}
 </script>
 
 <div bind:this={osmdContainer} class="osmd-container"></div>
 
 {#if $tooltipVisible}
-  <Tooltip content={$tooltipContent} x={$tooltipX} y={$tooltipY} />
+  <Tooltip content={$tooltipContent} {...$tooltipPosition} />
 {/if}
 
 <style>
